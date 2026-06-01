@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CognitiveMesh — Multi-Agent AI Debate System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#030a08;--bg2:#071510;--bg3:#0c1f18;
+  --border:rgba(16,185,129,0.1);--border2:rgba(16,185,129,0.25);
+  --accent:#10b981;--blue:#3b82f6;--amber:#f59e0b;--pink:#ec4899;--red:#ef4444;
+  --text:#e6fff7;--muted:#7ab8a0;--dim:#2d5c47;
+  --font:'Space Grotesk',sans-serif;--display:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 50% at 30% 40%,rgba(16,185,129,0.05),transparent)}
+
+.config-bar{background:var(--bg2);border-bottom:1px solid var(--border2);padding:.65rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.api-status{font-family:var(--mono);font-size:.7rem;padding:4px 14px;border-radius:999px;display:flex;align-items:center;gap:6px;font-weight:500}
+.status-live{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--accent)}
+.status-nokey{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--amber)}
+.status-dot{width:6px;height:6px;border-radius:50%}
+.status-live .status-dot{background:var(--accent);animation:blink 1.5s infinite}
+.status-nokey .status-dot{background:var(--amber)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.config-desc{font-size:.74rem;color:var(--muted);font-family:var(--mono)}
+.config-right{display:flex;align-items:center;gap:.6rem}
+.cfg-input{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;color:var(--text);font-family:var(--mono);font-size:.72rem;outline:none;width:280px;transition:border-color .2s}
+.cfg-input:focus{border-color:var(--accent)}.cfg-input::placeholder{color:var(--dim)}
+.cfg-btn{font-family:var(--mono);font-size:.7rem;padding:5px 14px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
+.cfg-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cfg-btn.save{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--accent)}
+
+header{position:sticky;top:0;z-index:50;background:rgba(3,10,8,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:60px}
+.logo{font-family:var(--display);font-size:1.1rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hright{display:flex;align-items:center;gap:1.5rem}
+.nav-tab{font-family:var(--mono);font-size:.75rem;color:var(--muted);cursor:pointer;padding:.25rem 0;border-bottom:2px solid transparent;transition:all .2s}
+.nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.hlinks a{color:var(--muted);text-decoration:none;font-size:.82rem;font-weight:500;transition:color .2s}
+.hlinks a:hover{color:var(--accent)}
+
+.page{display:none}.page.active{display:block}
+main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:2rem}
+
+.hero{text-align:center;padding:3.5rem 1rem 2.5rem}
+.htag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.72rem;color:var(--accent);background:rgba(16,185,129,0.07);border:1px solid var(--border2);border-radius:999px;padding:5px 14px;margin-bottom:1.25rem}
+.hero h1{font-family:var(--display);font-size:clamp(2rem,5vw,3.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin-bottom:.75rem}
+.hero h1 span{background:linear-gradient(135deg,var(--accent),var(--blue),var(--amber));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--muted);font-size:1rem;max-width:580px;margin:0 auto;line-height:1.7}
+
+.agents-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin:2rem 0}
+@media(max-width:700px){.agents-row{grid-template-columns:repeat(2,1fr)}}
+.ac{background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:1.1rem;text-align:center;transition:all .3s}
+.ac.speaking{transform:translateY(-5px)}
+.ac.scientist.speaking{border-color:var(--blue);box-shadow:0 8px 30px rgba(59,130,246,.15)}
+.ac.critic.speaking{border-color:var(--red);box-shadow:0 8px 30px rgba(239,68,68,.15)}
+.ac.ethicist.speaking{border-color:var(--amber);box-shadow:0 8px 30px rgba(245,158,11,.15)}
+.ac.optimizer.speaking{border-color:var(--pink);box-shadow:0 8px 30px rgba(236,72,153,.15)}
+.aemoji{font-size:1.8rem;margin-bottom:.4rem}
+.aname{font-family:var(--display);font-size:.92rem;font-weight:800;margin-bottom:.15rem}
+.arole{font-size:.65rem;font-family:var(--mono);color:var(--dim)}
+.sdot{width:8px;height:8px;border-radius:50%;margin:.4rem auto 0;background:var(--dim);transition:all .3s}
+.sdot.on{animation:sdot .45s infinite alternate}
+.scientist .sdot.on{background:var(--blue)}.critic .sdot.on{background:var(--red)}.ethicist .sdot.on{background:var(--amber)}.optimizer .sdot.on{background:var(--pink)}
+@keyframes sdot{from{transform:scale(1)}to{transform:scale(1.9)}}
+
+.topic-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+.tlabel{font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.7rem}
+.topic-inp{width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:12px;padding:.9rem 1.1rem;color:var(--text);font-family:var(--font);font-size:.95rem;outline:none;transition:border-color .2s;margin-bottom:.75rem}
+.topic-inp:focus{border-color:var(--accent)}.topic-inp::placeholder{color:var(--dim)}
+.presets{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem}
+.prs{background:transparent;border:1px solid var(--border);border-radius:8px;padding:.35rem .85rem;color:var(--muted);font-size:.72rem;font-family:var(--mono);cursor:pointer;transition:all .2s}
+.prs:hover{border-color:var(--accent);color:var(--accent)}
+.start-btn{width:100%;padding:.95rem;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--blue));color:#fff;font-family:var(--font);font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.6rem}
+.start-btn:hover{opacity:.88;transform:translateY(-1px)}.start-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+.dlayout{display:grid;grid-template-columns:1fr 300px;gap:1.5rem}
+@media(max-width:900px){.dlayout{grid-template-columns:1fr}}
+.feed-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem}
+.fhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem}
+.ftitle{font-family:var(--display);font-size:1.05rem;font-weight:800}
+.rlbl{font-family:var(--mono);font-size:.67rem;color:var(--dim);padding:3px 10px;background:var(--bg3);border-radius:999px;border:1px solid var(--border)}
+.msgs{display:flex;flex-direction:column;gap:.85rem;max-height:520px;overflow-y:auto;padding-right:.25rem}
+.msg{padding:.9rem 1.1rem;border-radius:12px;border-left:3px solid;opacity:0;transform:translateY(6px);transition:all .4s}
+.msg.show{opacity:1;transform:translateY(0)}
+.msg.scientist{background:rgba(59,130,246,.06);border-left-color:var(--blue)}
+.msg.critic{background:rgba(239,68,68,.06);border-left-color:var(--red)}
+.msg.ethicist{background:rgba(245,158,11,.06);border-left-color:var(--amber)}
+.msg.optimizer{background:rgba(236,72,153,.06);border-left-color:var(--pink)}
+.msg.consensus{background:rgba(16,185,129,.08);border-left-color:var(--accent);border-left-width:4px}
+.msg.streaming{opacity:1;transform:translateY(0)}
+.mhd{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
+.mname{font-family:var(--mono);font-size:.68rem;font-weight:600}
+.mn-sci{color:var(--blue)}.mn-cri{color:var(--red)}.mn-eth{color:var(--amber)}.mn-opt{color:var(--pink)}.mn-con{color:var(--accent)}
+.mround{font-family:var(--mono);font-size:.6rem;color:var(--dim);padding:1px 7px;background:var(--bg3);border-radius:999px;border:1px solid var(--border)}
+.mtext{font-size:.85rem;color:var(--text);line-height:1.65}
+.mthink{font-size:.78rem;color:var(--muted);font-family:var(--mono);font-style:italic;animation:fa .8s infinite alternate}
+@keyframes fa{from{opacity:.4}to{opacity:1}}
+.cursor{display:inline-block;width:2px;height:14px;background:var(--accent);margin-left:2px;animation:cur .7s infinite;vertical-align:middle}
+@keyframes cur{0%,100%{opacity:1}50%{opacity:0}}
+.feed-empty{color:var(--dim);font-family:var(--mono);font-size:.82rem;text-align:center;padding:3.5rem 1rem}
+
+.rpanel{display:flex;flex-direction:column;gap:1rem}
+.rcard{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.1rem}
+.rctitle{font-family:var(--mono);font-size:.65rem;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.8rem}
+.verdict{background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:.9rem;font-size:.82rem;color:var(--text);line-height:1.65;display:none}
+.verdict.show{display:block}
+.vlbl{color:var(--accent);font-family:var(--mono);font-size:.64rem;margin-bottom:.35rem;font-weight:600}
+.status-track{display:flex;flex-direction:column;gap:.45rem}
+.st-row{display:flex;align-items:center;gap:.6rem;font-size:.78rem}
+.st-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--dim)}
+.st-dot.done{background:var(--accent)}.st-dot.active{background:var(--amber);animation:blink 1s infinite}
+.st-label{color:var(--muted);font-family:var(--mono)}
+.st-label.done{color:var(--accent)}.st-label.active{color:var(--amber)}
+.debates-count{text-align:center;padding:.4rem}
+.dc-num{font-family:var(--display);font-size:1.8rem;font-weight:800;color:var(--blue)}
+.dc-lbl{font-size:.64rem;font-family:var(--mono);color:var(--dim);margin-top:2px}
+
+.history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.page-title{font-family:var(--display);font-size:1.5rem;font-weight:800}
+.refresh-btn{font-family:var(--mono);font-size:.75rem;padding:6px 16px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+.debate-list{display:flex;flex-direction:column;gap:1rem}
+.debate-item{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.25rem;cursor:pointer;transition:all .2s}
+.debate-item:hover{border-color:var(--border2);transform:translateY(-1px)}
+.di-topic{font-size:.95rem;font-weight:600;margin-bottom:.4rem}
+.di-meta{display:flex;gap:1rem;font-size:.72rem;font-family:var(--mono);color:var(--dim)}
+.di-status{padding:2px 10px;border-radius:999px;font-size:.68rem;font-family:var(--mono)}
+.st-complete{background:rgba(16,185,129,.1);color:var(--accent);border:1px solid rgba(16,185,129,.3)}
+.st-running{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.st-error{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.st-pending{background:rgba(71,85,105,.2);color:var(--dim);border:1px solid var(--border)}
+.history-empty{color:var(--dim);font-family:var(--mono);font-size:.82rem;text-align:center;padding:3rem}
+
+.back-btn{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.78rem;color:var(--muted);cursor:pointer;margin-bottom:1.5rem;background:none;border:none;padding:0;transition:color .2s}
+.back-btn:hover{color:var(--accent)}
+.detail-topic{font-family:var(--display);font-size:1.3rem;font-weight:800;margin-bottom:.4rem}
+.detail-meta{font-size:.75rem;color:var(--dim);font-family:var(--mono);margin-bottom:1.5rem}
+
+.toast{position:fixed;bottom:2rem;right:2rem;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:12px;padding:.85rem 1.25rem;font-family:var(--mono);font-size:.8rem;color:var(--red);z-index:100;display:none;max-width:380px}
+.toast.show{display:block}
+.toast.success{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4);color:var(--accent)}
+
+.ghs{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.25rem;margin-top:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.ghi h3{font-family:var(--display);font-size:.95rem;font-weight:800;margin-bottom:.2rem}
+.ghi p{font-size:.78rem;color:var(--muted)}
+.ghbs{display:flex;gap:.6rem}
+.ghb{display:inline-flex;align-items:center;gap:7px;padding:.52rem 1rem;border-radius:9px;font-size:.78rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;font-family:var(--font);transition:all .2s}
+.ghv{background:#238636;color:#fff}.ghv:hover{background:#2ea043}
+.ghc{background:transparent;border:1px solid var(--border2);color:var(--text)}.ghc:hover{border-color:var(--accent);color:var(--accent)}
+footer{border-top:1px solid var(--border);margin-top:4rem;padding:2rem;text-align:center;color:var(--dim);font-size:.78rem;font-family:var(--mono)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="config-bar">
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <div class="api-status status-nokey" id="api-status"><span class="status-dot"></span><span id="api-status-text">Connecting...</span></div>
+    <span class="config-desc" id="config-desc">Backend URL:</span>
+  </div>
+  <div class="config-right">
+    <input class="cfg-input" id="backend-url" placeholder="http://localhost:8000" type="url"/>
+    <button class="cfg-btn save" onclick="saveBackend()">Save</button>
+    <button class="cfg-btn" onclick="testConnection()">Test</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">⬡ CognitiveMesh</div>
+  <div class="hright">
+    <div style="display:flex;gap:1.25rem">
+      <span class="nav-tab active" onclick="showPage('debate')">Debate</span>
+      <span class="nav-tab" onclick="showPage('history')">History</span>
+    </div>
+    <nav class="hlinks"><a href="https://github.com/sairushitha/cognitivemesh" target="_blank">GitHub ↗</a></nav>
+  </div>
+</header>
+
+<div class="page active" id="page-debate">
+  <main>
+    <section class="hero">
+      <div class="htag">🎯 Real Multi-Agent AI · Sai Rushitha Bhimavarapu</div>
+      <h1>4 AI Agents Debate<br><span>Complex Decisions Live</span></h1>
+      <p>Each agent is a real Groq API call (Llama 3.3 70B) with a distinct system prompt. Responses stream in real time. All debates saved to the database.</p>
+    </section>
+
+    <div class="agents-row">
+      <div class="ac scientist" id="ac-scientist"><div class="aemoji">🔬</div><div class="aname" style="color:#93c5fd">Scientist</div><div class="arole">Evidence & Data</div><div class="sdot" id="sd-scientist"></div></div>
+      <div class="ac critic" id="ac-critic"><div class="aemoji">⚔️</div><div class="aname" style="color:#fca5a5">Critic</div><div class="arole">Flaws & Risks</div><div class="sdot" id="sd-critic"></div></div>
+      <div class="ac ethicist" id="ac-ethicist"><div class="aemoji">⚖️</div><div class="aname" style="color:#fcd34d">Ethicist</div><div class="arole">Values & Impact</div><div class="sdot" id="sd-ethicist"></div></div>
+      <div class="ac optimizer" id="ac-optimizer"><div class="aemoji">⚡</div><div class="aname" style="color:#f9a8d4">Optimizer</div><div class="arole">Efficiency & Scale</div><div class="sdot" id="sd-optimizer"></div></div>
+    </div>
+
+    <div class="topic-card">
+      <div class="tlabel">Debate Topic</div>
+      <input class="topic-inp" id="topic-inp" placeholder="Enter any complex, controversial question..."/>
+      <div class="presets">
+        <button class="prs" onclick="st('Should AGI systems be granted legal personhood and rights?')">AGI legal rights</button>
+        <button class="prs" onclick="st('Is universal basic income the right response to AI-driven unemployment?')">UBI vs AI jobs</button>
+        <button class="prs" onclick="st('Should AI systems make autonomous life-or-death medical decisions?')">AI medical decisions</button>
+        <button class="prs" onclick="st('Is open-source AI development more dangerous than closed development?')">Open vs closed AI</button>
+      </div>
+      <button class="start-btn" id="start-btn" onclick="startDebate()"><span>⬡</span><span>Start Live AI Debate</span></button>
+    </div>
+
+    <div class="dlayout">
+      <div class="feed-card">
+        <div class="fhdr"><div class="ftitle">Live Debate Feed</div><span class="rlbl" id="round-label">—</span></div>
+        <div class="msgs" id="msgs"><div class="feed-empty">Make sure your backend is running, then start a debate to see 4 AI agents argue in real time...</div></div>
+      </div>
+      <div class="rpanel">
+        <div class="rcard">
+          <div class="rctitle">Debate Progress</div>
+          <div class="status-track">
+            <div class="st-row"><div class="st-dot" id="st-r1"></div><span class="st-label" id="stl-r1">Round 1 — Initial positions</span></div>
+            <div class="st-row"><div class="st-dot" id="st-r2"></div><span class="st-label" id="stl-r2">Round 2 — Cross-examination</span></div>
+            <div class="st-row"><div class="st-dot" id="st-con"></div><span class="st-label" id="stl-con">Consensus synthesis</span></div>
+          </div>
+        </div>
+        <div class="rcard">
+          <div class="rctitle">Board Consensus</div>
+          <div class="verdict" id="verdict"><div class="vlbl">▸ CONSENSUS REACHED</div><div id="verdict-text"></div></div>
+          <div id="verdict-empty" style="color:var(--dim);font-family:var(--mono);font-size:.75rem;text-align:center;padding:.85rem">Awaiting debate completion...</div>
+        </div>
+        <div class="rcard">
+          <div class="rctitle">Total Debates Run</div>
+          <div class="debates-count"><div class="dc-num" id="debates-count">—</div><div class="dc-lbl">SAVED IN DATABASE</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ghs">
+      <div class="ghi"><h3>📦 sairushitha / cognitivemesh</h3><p>FastAPI + Groq API (Llama 3.3 70B) + SQLite/PostgreSQL + SSE streaming</p></div>
+      <div class="ghbs"><a class="ghb ghv" href="https://github.com/sairushitha/cognitivemesh" target="_blank">⬡ GitHub</a><button class="ghb ghc" onclick="copyClone()">📋 Clone</button></div>
+    </div>
+  </main>
+</div>
+
+<div class="page" id="page-history">
+  <main>
+    <div class="history-header"><div class="page-title">Debate History</div><button class="refresh-btn" onclick="loadHistory()">↻ Refresh</button></div>
+    <div class="debate-list" id="debate-list"><div class="history-empty">No debates yet. Run your first debate!</div></div>
+  </main>
+</div>
+
+<div class="page" id="page-detail">
+  <main>
+    <button class="back-btn" onclick="showPage('history')">← Back to History</button>
+    <div class="detail-topic" id="detail-topic"></div>
+    <div class="detail-meta" id="detail-meta"></div>
+    <div class="msgs" id="detail-msgs" style="max-height:none"></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<footer>Built by Sai Rushitha Bhimavarapu · CognitiveMesh · FastAPI + Groq API · <a href="https://github.com/sairushitha" style="color:var(--accent);text-decoration:none">github.com/sairushitha</a></footer>
+
+<script>
+// Defaults to localhost for local development
+let backendUrl = localStorage.getItem('cm_backend') || 'http://localhost:8000';
+let currentDebateId = null, isRunning = false;
+
+const AGENT_CLASSES = {
+  scientist: { cls: 'scientist', nc: 'mn-sci', label: '🔬 Scientist' },
+  critic:    { cls: 'critic',    nc: 'mn-cri', label: '⚔️ Critic' },
+  ethicist:  { cls: 'ethicist',  nc: 'mn-eth', label: '⚖️ Ethicist' },
+  optimizer: { cls: 'optimizer', nc: 'mn-opt', label: '⚡ Optimizer' },
+  consensus: { cls: 'consensus', nc: 'mn-con', label: '⬡ Board Consensus' }
+};
+
+function init() {
+  document.getElementById('backend-url').value = backendUrl;
+  testConnection();
+}
+
+function saveBackend() {
+  const url = document.getElementById('backend-url').value.trim().replace(/\/$/, '');
+  if (!url.startsWith('http')) { showToast('Enter a valid URL (http://localhost:8000)'); return; }
+  backendUrl = url; localStorage.setItem('cm_backend', url);
+  testConnection();
+}
+
+async function testConnection() {
+  const url = document.getElementById('backend-url').value.trim().replace(/\/$/, '') || backendUrl;
+  try {
+    const res = await fetch(url + '/health');
+    const data = await res.json();
+    if (data.status === 'healthy') {
+      backendUrl = url; localStorage.setItem('cm_backend', url);
+      setConnected(true); loadDebateCount();
+      showToast('✅ Backend connected!', 'success');
+    }
+  } catch (e) { setConnected(false); }
+}
+
+function setConnected(on) {
+  const el = document.getElementById('api-status');
+  el.className = 'api-status ' + (on ? 'status-live' : 'status-nokey');
+  document.getElementById('api-status-text').textContent = on ? 'Backend connected' : 'Backend offline';
+  document.getElementById('config-desc').textContent = on ? `Connected: ${backendUrl}` : 'Start backend, then click Test →';
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const tabs = { debate: 0, history: 1 };
+  if (tabs[name] !== undefined) document.querySelectorAll('.nav-tab')[tabs[name]].classList.add('active');
+  if (name === 'history') loadHistory();
+}
+
+function st(t) { document.getElementById('topic-inp').value = t; }
+
+function setAgent(id, on) {
+  const card = document.getElementById('ac-' + id);
+  const dot = document.getElementById('sd-' + id);
+  if (card) card.classList.toggle('speaking', on);
+  if (dot) dot.classList.toggle('on', on);
+}
+
+function setRound(r) {
+  document.getElementById('round-label').textContent = r === 3 ? 'Consensus' : `Round ${r} / 3`;
+  if (r >= 1) { document.getElementById('st-r1').className = r > 1 ? 'st-dot done' : 'st-dot active'; document.getElementById('stl-r1').className = r > 1 ? 'st-label done' : 'st-label active'; }
+  if (r >= 2) { document.getElementById('st-r2').className = r > 2 ? 'st-dot done' : 'st-dot active'; document.getElementById('stl-r2').className = r > 2 ? 'st-label done' : 'st-label active'; }
+  if (r >= 3) { document.getElementById('st-con').className = 'st-dot active'; document.getElementById('stl-con').className = 'st-label active'; }
+}
+
+function addThinking(agent, round) {
+  const feed = document.getElementById('msgs');
+  const ag = AGENT_CLASSES[agent];
+  const d = document.createElement('div');
+  d.className = `msg ${ag.cls} streaming`; d.id = 'streaming-msg';
+  d.innerHTML = `<div class="mhd"><span class="mname ${ag.nc}">${ag.label}</span><span class="mround">Round ${round}</span></div><div class="mtext mthink">thinking...</div>`;
+  feed.appendChild(d); feed.scrollTop = feed.scrollHeight;
+}
+
+let streamingText = '';
+function updateStreaming(token) {
+  const d = document.getElementById('streaming-msg');
+  if (!d) return;
+  const textEl = d.querySelector('.mtext');
+  if (textEl.classList.contains('mthink')) { textEl.classList.remove('mthink'); streamingText = ''; }
+  streamingText += token;
+  textEl.innerHTML = escapeHtml(streamingText) + '<span class="cursor"></span>';
+  document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
+}
+
+function finalizeMsg(content) {
+  const d = document.getElementById('streaming-msg');
+  if (d) { d.querySelector('.mtext').innerHTML = escapeHtml(content); d.id = ''; }
+  streamingText = '';
+}
+
+function escapeHtml(t) { const e = document.createElement('div'); e.textContent = t; return e.innerHTML; }
+
+async function startDebate() {
+  const topic = document.getElementById('topic-inp').value.trim();
+  if (!topic) { alert('Please enter a debate topic.'); return; }
+  if (isRunning) return;
+  isRunning = true;
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true; btn.innerHTML = '<span>⬡</span><span>Debate in progress...</span>';
+  document.getElementById('msgs').innerHTML = '';
+  document.getElementById('verdict').className = 'verdict';
+  document.getElementById('verdict-empty').style.display = 'block';
+  ['r1','r2','con'].forEach(k => { document.getElementById('st-'+k).className = 'st-dot'; document.getElementById('stl-'+k).className = 'st-label'; });
+
+  try {
+    const startRes = await fetch(`${backendUrl}/api/debate/start`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic })
+    });
+    if (!startRes.ok) { const err = await startRes.json(); throw new Error(err.detail || 'Failed to start'); }
+    const { debate_id } = await startRes.json();
+    currentDebateId = debate_id;
+
+    const evtSource = new EventSource(`${backendUrl}/api/debate/stream/${debate_id}`);
+    evtSource.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === 'round_start') setRound(data.round);
+      else if (data.type === 'agent_thinking') {
+        Object.keys(AGENT_CLASSES).forEach(a => setAgent(a, false));
+        setAgent(data.agent, true); addThinking(data.agent, data.round);
+      }
+      else if (data.type === 'token') updateStreaming(data.token);
+      else if (data.type === 'message_complete') {
+        finalizeMsg(data.content); setAgent(data.agent, false);
+        if (data.agent === 'consensus') {
+          document.getElementById('verdict-empty').style.display = 'none';
+          document.getElementById('verdict-text').textContent = data.content;
+          document.getElementById('verdict').className = 'verdict show';
+          document.getElementById('st-con').className = 'st-dot done';
+          document.getElementById('stl-con').className = 'st-label done';
+          document.getElementById('round-label').textContent = '✅ Complete';
+        }
+      }
+      else if (data.type === 'debate_complete') {
+        evtSource.close(); resetBtn(); loadDebateCount();
+      }
+      else if (data.type === 'error') {
+        showToast('Error: ' + data.message); evtSource.close(); resetBtn();
+      }
+    };
+    evtSource.onerror = () => {
+      evtSource.close();
+      if (isRunning) { showToast('Stream disconnected. Is the backend running?'); resetBtn(); }
+    };
+  } catch (err) { showToast('Error: ' + err.message); resetBtn(); }
+}
+
+function resetBtn() {
+  isRunning = false;
+  const btn = document.getElementById('start-btn');
+  btn.disabled = false; btn.innerHTML = '<span>⬡</span><span>Start Live AI Debate</span>';
+}
+
+async function loadHistory() {
+  try {
+    const res = await fetch(`${backendUrl}/api/history/`);
+    const debates = await res.json();
+    const list = document.getElementById('debate-list');
+    if (!debates.length) { list.innerHTML = '<div class="history-empty">No debates yet. Start one!</div>'; return; }
+    list.innerHTML = debates.map(d => `
+      <div class="debate-item" onclick="loadDebate('${d.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+          <div class="di-topic">${escapeHtml(d.topic)}</div>
+          <span class="di-status st-${d.status}">${d.status}</span>
+        </div>
+        <div class="di-meta"><span>${new Date(d.created_at).toLocaleString()}</span><span>${d.message_count} messages</span></div>
+      </div>`).join('');
+  } catch (e) { document.getElementById('debate-list').innerHTML = '<div class="history-empty">Could not load history. Is the backend running?</div>'; }
+}
+
+async function loadDebate(id) {
+  try {
+    const res = await fetch(`${backendUrl}/api/history/${id}`);
+    const debate = await res.json();
+    document.getElementById('detail-topic').textContent = debate.topic;
+    document.getElementById('detail-meta').textContent = `${new Date(debate.created_at).toLocaleString()} · ${debate.messages.length} messages · ${debate.status}`;
+    document.getElementById('detail-msgs').innerHTML = debate.messages.map(m => {
+      const ag = AGENT_CLASSES[m.agent] || { cls: 'consensus', nc: 'mn-con' };
+      return `<div class="msg ${ag.cls} show" style="margin-bottom:.75rem"><div class="mhd"><span class="mname ${ag.nc}">${m.agent_label}</span><span class="mround">Round ${m.round_num}</span></div><div class="mtext">${escapeHtml(m.content)}</div></div>`;
+    }).join('');
+    showPage('detail');
+  } catch (e) { showToast('Failed to load debate'); }
+}
+
+async function loadDebateCount() {
+  try {
+    const res = await fetch(`${backendUrl}/api/history/`);
+    const debates = await res.json();
+    document.getElementById('debates-count').textContent = debates.length;
+  } catch (e) {}
+}
+
+function showToast(msg, type = 'error') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (type === 'success' ? ' success' : '');
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+function copyClone() {
+  navigator.clipboard.writeText('git clone https://github.com/sairushitha/cognitivemesh.git');
+  const b = event.target; b.textContent = '✓ Copied!';
+  setTimeout(() => b.textContent = '📋 Clone', 2000);
+}
+
+init();
+</script>
+</body>
+</html>
