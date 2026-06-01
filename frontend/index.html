@@ -162,7 +162,7 @@ footer{border-top:1px solid var(--border);margin-top:4rem;padding:2rem;text-alig
     <span class="config-desc" id="config-desc">Backend URL:</span>
   </div>
   <div class="config-right">
-    <input class="cfg-input" id="backend-url" placeholder="http://localhost:8000" type="url"/>
+    <input class="cfg-input" id="backend-url" placeholder="https://cognitivemesh.onrender.com" type="url"/>
     <button class="cfg-btn save" onclick="saveBackend()">Save</button>
     <button class="cfg-btn" onclick="testConnection()">Test</button>
   </div>
@@ -260,7 +260,7 @@ footer{border-top:1px solid var(--border);margin-top:4rem;padding:2rem;text-alig
 
 <script>
 // Defaults to localhost for local development
-let backendUrl = localStorage.getItem('cm_backend') || 'http://localhost:8000';
+let backendUrl = localStorage.getItem('cm_backend') || 'https://cognitivemesh.onrender.com';
 let currentDebateId = null, isRunning = false;
 
 const AGENT_CLASSES = {
@@ -278,7 +278,7 @@ function init() {
 
 function saveBackend() {
   const url = document.getElementById('backend-url').value.trim().replace(/\/$/, '');
-  if (!url.startsWith('http')) { showToast('Enter a valid URL (http://localhost:8000)'); return; }
+  if (!url.startsWith('http')) { showToast('Enter a valid URL (https://cognitivemesh.onrender.com)'); return; }
   backendUrl = url; localStorage.setItem('cm_backend', url);
   testConnection();
 }
